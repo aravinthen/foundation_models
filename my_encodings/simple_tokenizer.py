@@ -7,6 +7,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import urllib.request
 from typing import List
+import random
 
 class SimpleDataset(Dataset):
     """
@@ -69,14 +70,16 @@ class SimpleTokenizer:
         self.embedding_size = embedding_size
         self.embedding_layer = None
 
-    def set_vocabulary(self, url_path, file_path):
+    def set_vocabulary(self, file_path, url_path="",):
         """
         Use a URL to obtain a vocabulary text.
         :param url_path: the url of the vocab basis.
         :param file: the file actually being used as the vocabulary.
         """
 
-        urllib.request.urlretrieve(url_path, file_path)
+        if url_path:
+            urllib.request.urlretrieve(url_path, file_path)
+
         with open(file_path, "r", encoding="utf-8") as f:
             raw_test = f.read()
 
@@ -126,6 +129,13 @@ class SimpleTokenizer:
         """
         return [self.converter[t] for t in input_tokens]
 
+    def sample_random_tokens(self, n) -> list:
+        """
+        Generates n random tokens
+        :param n: number of tokens
+        :return: list of tokens
+        """
+        return random.choices(list(self.vocab), k=n)
 
 if __name__=='__main__':
 
@@ -137,6 +147,8 @@ if __name__=='__main__':
            "LLMS-from-scratch/main/ch02/01_main-chapter-code/"
            "the-verdict.txt")
 
-    file_path = 'the-verdict.txt'
-    test.set_vocabulary(url, file_path)
+    file_path = '../the-verdict.txt'
+    test.set_vocabulary(file_path, url)
     data_loader = SimpleDataset(test, 10, 4).create_data_loader()
+
+    print(test.embedding_layer.weight)
