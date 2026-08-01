@@ -17,7 +17,6 @@ class TransformerBlock(nn.Module):
         emb_dim = config["emb_dim"]
         n_heads= config["n_heads"]
         drop_rate = config["drop_rate"]
-        qkv_bias = config["qkv_bias"]
 
         # the multihead attention
         self.att = MultiHeadAttention(
@@ -29,7 +28,7 @@ class TransformerBlock(nn.Module):
         )
 
         # surrounding machinery
-        self.ff = FeedForward(config, use_shortcut=False, depth=1)
+        self.ff = FeedForward(config)
         self.norm1 = LayerNorm(emb_dim)
         self.norm2 = LayerNorm(emb_dim)
         self.drop = nn.Dropout(drop_rate)
@@ -70,8 +69,8 @@ class LayerNorm(nn.Module):
         :param x:
         :return:
         """
-        mean = x.mean(dim=-1)
-        var = x.var(dim=-1, keep_dim=True, unbiased=False)
+        mean = x.mean(dim=-1, keepdim=True)
+        var = x.var(dim=-1, keepdim=True, unbiased=False)
 
         # use eps to prevent Nans
         norm_x = (x - mean) / torch.sqrt(var + self.eps)
@@ -83,27 +82,19 @@ class FeedForward(nn.Module):
     Receives input batches. Internally expands the embedding dimension into a higher space through the first linear
     layer.
     """
-    def __init__(self, config, use_shortcut, depth=2):
+    def __init__(self, config):
         super().__init__()
 
         emb_dim = config["emb_dim"]
-        self.use_shortcut = use_shortcut
 
-        modules = []
-        for _ in range(depth):
-            modules.append(nn.Linear(emb_dim, emb_dim))
-            modules.append(nn.GELU())
-
-        self.layers = nn.Sequential(*modules)
+        self.layers = nn.Sequential(
+            nn.Linear(emb_dim, 4*emb_dim),
+            nn.GELU(),
+            nn.Linear(4*emb_dim, emb_dim)
+        )
 
     def forward(self, x):
-        for layer in self.layers:
-            layer_output = layer(x)
-            if self.use_shortcut and x.shape == layer_output.shape:
-                x = x + layer_output
-            else:
-                x = layer_output
-        return x
+        return self.layers(x)
 
 # the full GPT model
 class BabyGPTModel(nn.Module):
@@ -165,13 +156,15 @@ def generate_text(model, idx, max_new_tokens, context_size):
     :return:
     """
     for _ in range(max_new_tokens):
-        idx_cond = idx[:, -context_size] # obtain the parts of the sequence used for inference,
+        idx_cond = idx[:, -context_size:] # obtain the parts of the sequence used for inference,
         with torch.no_grad():
-            logs = model(idx_cond)
+            logit_vec = model(idx_cond)
 
-        logs = logits[:, -1, :] # focuses on the last generated embedding
-        probs = torch.softmax(logs, dim=-1)
-        idx_next = torch.argmax(probs, dim=-1, keepdim=True)
+        logit_vec = logit_vec[:, -1, :] # focuses on the last generated embedding
+        # greedy decoding
+        idx_next = torch.argmax(logit_vec, dim=-1, keepdim=True)
+
+        # append predicted
         idx = torch.cat((idx, idx_next), dim=1)
 
     return idx
@@ -184,7 +177,6 @@ if __name__ == "__main__":
         "n_heads": 12,      # number of attention heads
         "n_layers": 12,     # number of transformer blocks
         "drop_rate": 0.1,   # rate of dropout
-        "qkv_bias": False   # bias associated with Q/K/V matrices
     }
 
     # inputs
