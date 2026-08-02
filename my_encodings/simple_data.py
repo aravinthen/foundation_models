@@ -1,30 +1,27 @@
 #
-# Program name:     simple_tokenizer.py
-# Description:      A library of simple tokenizers.
+# Program name:     simple_data.py
+# Description:      A simple tokenizer and dataset.
 #
 import re
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import urllib.request
 from typing import List
 import random
 
 class SimpleDataset(Dataset):
-    """
-    A simple dataset loader class -  taken from Raschka directly.
-    """
-
-    def __init__(self, tokenizer, max_length, stride):
+    def __init__(self, txt, tokenizer, max_length, stride):
         self.input_ids = []
         self.target_ids = []
 
-        self.tokenizer = tokenizer
+        # Tokenize the entire text
+        token_ids = tokenizer.encode(txt, allowed_special={"<|endoftext|>"})
+        assert len(token_ids) > max_length, "Number of tokenized inputs must at least be equal to max_length+1"
 
-        token_ids = tokenizer.encode(tokenizer.source_text)
+        # Use a sliding window to chunk the book into overlapping sequences of max_length
         for i in range(0, len(token_ids) - max_length, stride):
-            input_chunk = token_ids[i:i+max_length]
-            target_chunk = token_ids[i+1: i+max_length + 1]
-
+            input_chunk = token_ids[i:i + max_length]
+            target_chunk = token_ids[i + 1: i + max_length + 1]
             self.input_ids.append(torch.tensor(input_chunk))
             self.target_ids.append(torch.tensor(target_chunk))
 
@@ -33,25 +30,6 @@ class SimpleDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.input_ids[idx], self.target_ids[idx]
-
-    def create_data_loader(self,
-                           batch_size=4,
-                           shuffle=True,
-                           drop_last=True,
-                           num_workers=0):
-
-        tokenizer = self.tokenizer
-        dataset = self
-
-        dataloader = DataLoader(
-            dataset,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            drop_last=drop_last,
-            num_workers=num_workers
-        )
-
-        return dataloader
 
 class SimpleTokenizer:
     """
@@ -81,9 +59,9 @@ class SimpleTokenizer:
             urllib.request.urlretrieve(url_path, file_path)
 
         with open(file_path, "r", encoding="utf-8") as f:
-            raw_test = f.read()
+            raw_text = f.read()
 
-        self.source_text = raw_test
+        self.source_text = raw_text
         self.tokenized_source = self.split(self.source_text)
 
         self.all_words = sorted(set(self.tokenized_source))
@@ -110,7 +88,7 @@ class SimpleTokenizer:
 
         return segments
 
-    def encode(self, input_text) -> List:
+    def encode(self, input_text, allowed_special=None) -> List:
         """
         Converts a split-list string into tokens
         :param input_text:
@@ -149,6 +127,10 @@ if __name__=='__main__':
 
     file_path = '../the-verdict.txt'
     test.set_vocabulary(file_path, url)
-    data_loader = SimpleDataset(test, 10, 4).create_data_loader()
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        text = f.read()
+
+    data_loader = SimpleDataset(text, test, 4, stride=4)
 
     print(test.embedding_layer.weight)

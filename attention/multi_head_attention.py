@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 
 from attention.masked_attention import MaskedAttention
-from my_encodings.simple_tokenizer import SimpleTokenizer
+from my_encodings.simple_data import SimpleTokenizer
 
 class NaiveMultiHeadAttention(nn.Module):
     """

@@ -3,7 +3,7 @@
 # Description: A slightly more streamlined version of simple attention in Raschka's Build a Large Language Model book
 #
 
-from my_encodings.simple_tokenizer import SimpleTokenizer
+from my_encodings.simple_data import SimpleTokenizer
 
 import torch
 import torch.nn as nn

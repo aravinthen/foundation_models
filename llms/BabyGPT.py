@@ -146,7 +146,7 @@ class BabyGPTModel(nn.Module):
 
 
 # note: this is an environment!!!
-def generate_text(model, idx, max_new_tokens, context_size):
+def generate_text(model, idx, max_new_tokens, context_size, mode='greedy', temperature=0):
     """
     Use a provided model as a text generator. Corresponds to greedy sampling from RL
     :param model: the gpt model employed
@@ -161,13 +161,43 @@ def generate_text(model, idx, max_new_tokens, context_size):
             logit_vec = model(idx_cond)
 
         logit_vec = logit_vec[:, -1, :] # focuses on the last generated embedding
-        # greedy decoding
-        idx_next = torch.argmax(logit_vec, dim=-1, keepdim=True)
+
+        if temperature > 0:
+            logit_vec = logit_vec / temperature
+
+        probs = torch.softmax(logit_vec, dim=0)
+
+        match mode:
+            case 'sampler':
+                idx_next = torch.multinomial(probs, num_samples=1).item()
+            case _:
+                # greedy decoding (default)
+                idx_next = torch.argmax(logit_vec, dim=-1, keepdim=True)
 
         # append predicted
         idx = torch.cat((idx, idx_next), dim=1)
 
     return idx
+
+def text_to_token_ids(text, tokenizer_f):
+    """
+    Encodes texts to tokens.
+    :return:
+    """
+    encoded = tokenizer_f.encode(text, allowed_special = {'<|end of text|>'})
+    encoded_tensor = torch.tensor(encoded).unsqueeze(0)
+
+    return encoded_tensor
+
+def token_ids_to_text(token_ids, tokenizer_f):
+    """
+    Converts from tokens to list.
+    :return:
+    """
+    flat = token_ids.squeeze(0)
+    decoded_text = tokenizer_f.decode(flat.tolist())
+
+    return decoded_text
 
 if __name__ == "__main__":
     my_config = {
@@ -189,20 +219,17 @@ if __name__ == "__main__":
     batch.append(torch.tensor(tokenizer.encode(txt2)))
     batch = torch.stack(batch, dim=0)
 
+    torch.manual_seed(123)
     my_gpt = BabyGPTModel(my_config)
 
-    torch.manual_seed(123)
-    logits = my_gpt(batch)
 
     # print("Output shape: ", logits.shape)
     # print(logits)
 
     # proper test
     start_context = "Hello, I am"
-    encoded = tokenizer.encode(start_context)
-    print("encoded:", encoded)
-    encoded_tensor = torch.tensor(encoded).unsqueeze(0)
-    print("encoded tensor shape", encoded_tensor.shape)
+
+    encoded_tensor = text_to_token_ids(start_context, tokenizer_f=tokenizer)
 
     my_gpt.eval()
     out = generate_text(model=my_gpt,
@@ -210,5 +237,10 @@ if __name__ == "__main__":
                         max_new_tokens=6,
                         context_size=my_config["context_length"])
 
-    print("Output:", out)
-    print("Output length:", len(out[0]))
+    decoded_tensor = token_ids_to_text(out, tokenizer_f=tokenizer)
+
+
+    print("Output:", decoded_tensor)
+    print("Output length:", len(decoded_tensor[0]))
+
+
