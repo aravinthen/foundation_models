@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 
 from attention.masked_attention import MaskedAttention
-from my_encodings.simple_data import SimpleTokenizer
+from encoding.simple_data import SimpleTokenizer
 
 class NaiveMultiHeadAttention(nn.Module):
     """
@@ -23,7 +23,7 @@ class NaiveMultiHeadAttention(nn.Module):
         )
 
     def forward(self, x):
-        return torch.cat([head(x) for head in self.heads])
+        return torch.cat([head(x) for head in self.heads], dim=-1)
 
 class MultiHeadAttention(nn.Module):
     """

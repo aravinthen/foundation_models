@@ -3,7 +3,7 @@
 # Description: A proper implementation of scaled dot-product attention
 #
 
-from my_encodings.simple_data import SimpleTokenizer
+from encoding.simple_data import SimpleTokenizer
 import torch
 import torch.nn as nn
 

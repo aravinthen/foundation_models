@@ -3,7 +3,7 @@
 # Description: A proper implementation of scaled dot-product attention
 #
 
-from my_encodings.simple_data import SimpleTokenizer
+from encoding.simple_data import SimpleTokenizer
 import torch
 import torch.nn as nn
 
@@ -58,8 +58,8 @@ if __name__ == "__main__":
     W_value = torch.nn.Parameter(torch.rand(d_in, d_out), requires_grad=True)
 
     queries = inputs @ W_query
-    keys = inputs @ W_value
-    values = inputs @ W_key
+    keys = inputs @ W_key
+    values = inputs @ W_value
 
     attention_scores = queries @ keys.T
 

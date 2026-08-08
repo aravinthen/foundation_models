@@ -1,2 +1,5 @@
 # foundation_models
-A compendium of resources and implementations on foundation models.
+Personal experiments on the building and training of foundation models.
+
+# Models built:
+* Decoder-only transformer

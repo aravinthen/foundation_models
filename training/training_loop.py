@@ -11,7 +11,7 @@ import tiktoken
 import matplotlib.pyplot as plt
 
 from llms.BabyGPT import (BabyGPTModel, generate_text, text_to_token_ids, token_ids_to_text)
-from my_encodings.simple_data import SimpleDataset
+from encoding.simple_data import SimpleDataset
 
 def create_dataloader(txt, tokenizer, batch_size=4, max_length=256,
                       stride=128, shuffle=True, drop_last=True,

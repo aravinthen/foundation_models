@@ -165,11 +165,11 @@ def generate_text(model, idx, max_new_tokens, context_size, mode='greedy', tempe
         if temperature > 0:
             logit_vec = logit_vec / temperature
 
-        probs = torch.softmax(logit_vec, dim=0)
+        probs = torch.softmax(logit_vec, dim=-1)
 
         match mode:
             case 'sampler':
-                idx_next = torch.multinomial(probs, num_samples=1).item()
+                idx_next = torch.multinomial(probs, num_samples=1)
             case _:
                 # greedy decoding (default)
                 idx_next = torch.argmax(logit_vec, dim=-1, keepdim=True)
